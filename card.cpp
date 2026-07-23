@@ -101,12 +101,11 @@ void getKickers(Hand h, int freq[13], uint16_t handMask, int handRank, int (&kic
         case Card::FULLHOUSE: {
             bool tripFound = false;
             bool pairFound = false;
-            for (int i{12}; i >= 0; --i) {
+            for (int i{12}; i >= 0 && !pairFound && !tripFound; --i) {
                 if (!tripFound && freq[i] == 3) { kickers[0] = i; tripFound = true; }
-                if (!pairFound && freq[i] == 2) { kickers[1] = i; pairFound = true; }
-
-                if (pairFound && tripFound) return;
+                if (!pairFound && freq[i] >= 2) { kickers[1] = i; pairFound = true; }
             }
+            
             return;
         }
 
