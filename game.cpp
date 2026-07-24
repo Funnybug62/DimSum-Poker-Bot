@@ -51,14 +51,33 @@ void Game::dealHand() {
     B = Hand{};
     
     dealt = 0;
-    pot = 30;
+    pot = 0;
     aStack -= (dealer == 0) ? smallBlind : bigBlind;
     bStack -= (dealer == 1) ? smallBlind : bigBlind;
 
     holeA[0] = deck[dealt++];
     holeA[1] = deck[dealt++];
+
+    int hole1 = Card::getRank(holeA[0]);
+    int hole2 = Card::getRank(holeA[1]);
+ 
+    if (hole2 < hole1) {
+        uint8_t temp = holeA[0];
+        holeA[0] = holeA[1];
+        holeA[1] = temp;
+    }
+
     holeB[0] = deck[dealt++];
     holeB[1] = deck[dealt++];
+
+    hole1 = Card::getRank(holeB[0]);
+    hole2 = Card::getRank(holeB[1]);
+ 
+    if (hole2 < hole1) {
+        uint8_t temp = holeB[0];
+        holeB[0] = holeB[1];
+        holeB[1] = temp;
+    }
 }
 
 int Game::getAction(int opposingBet, int curBet, bool invalid) {
@@ -239,6 +258,16 @@ void Game::playHand() {
     uint32_t aHandVal = Card::getHandValue(A);
     uint32_t bHandVal = Card::getHandValue(B);
 
+    std::cout << "A Hand: ";
+    Card::displayCard(holeA[0]);
+    Card::displayCard(holeA[1]);
+    std::cout << std::endl;
+
+    std::cout << "B Hand: ";
+    Card::displayCard(holeB[0]);
+    Card::displayCard(holeB[1]);
+    std::cout << std::endl;
+
     if (aHandVal == bHandVal) { 
         aStack += pot/2; 
         bStack += pot/2; 
@@ -257,6 +286,15 @@ void Game::playHand() {
     dealer ^= 1;
 
 
+}
+
+void Game::playFull() {
+    while (aStack > 0 && bStack > 0) {
+        playHand();
+    }
+
+    if (aStack > 0) std::cout << "A Won" << std::endl;
+    else std::cout << "B Won" << std::endl;
 }
 
 

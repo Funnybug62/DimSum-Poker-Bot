@@ -32,6 +32,26 @@ void Card::displayCard(uint8_t card) {
     std::cout << Card::suits[suit] << Card::ranks[rank];
 } 
 
+int Card::getRank(uint8_t card) {
+    uint8_t rank = card & ((1 << 4)-1);
+
+    const char* r = Card::ranks[rank];
+
+    if (std::strcmp(r, "A") == 0) return 14;
+    if (std::strcmp(r, "K") == 0) return 13;
+    if (std::strcmp(r, "Q") == 0) return 12;
+    if (std::strcmp(r, "J") == 0) return 11;
+    if (std::strcmp(r, "10") == 0) return 10;
+    if (std::strcmp(r, "9") == 0) return 9; 
+    if (std::strcmp(r, "8") == 0) return 8;
+    if (std::strcmp(r, "7") == 0) return 7; 
+    if (std::strcmp(r, "6") == 0) return 6;
+    if (std::strcmp(r, "5") == 0) return 5; 
+    if (std::strcmp(r, "4") == 0) return 4;
+    if (std::strcmp(r, "3") == 0) return 3; 
+    return 2;
+}
+
 int Card::flush(Hand h) {
     for (size_t i{0}; i < 4; ++i) if (__builtin_popcount(h.suits[i]) >= 5) return i;
     return -1;

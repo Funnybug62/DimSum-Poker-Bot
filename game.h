@@ -53,6 +53,7 @@ public:
     int bettingRound(int &aBet, int &bBet, bool &aTurn);
     void playHand();
     void displayState(bool aTurn);
+    void playFull();
 };
 
 #endif

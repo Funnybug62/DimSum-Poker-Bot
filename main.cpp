@@ -3,5 +3,6 @@
 
 int main() {
     Game g;
-    g.playHand();
+
+    g.playFull();
 }
