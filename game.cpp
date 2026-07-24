@@ -1,5 +1,48 @@
 #include "game.h"
 
+void Game::clearTerminal() { system("clear"); }
+
+std::string Game::getStageString() {
+    switch (stage) {
+        case PREFLOP: return "PREFLOP";
+        case FLOP: return "FLOP";
+        case TURN: return "TURN";
+        case RIVER: return "RIVER";
+        case SHOWDOWN: return "SHOWDOWN";
+        default: return "N/A";
+    }
+}
+
+void Game::displayState(bool aTurn) {
+    clearTerminal();
+    clearTerminal();
+
+    std::cout << "STAGE: " << getStageString() << std::endl;
+    if (aTurn) {
+        std::cout << "Current Turn: A" << std::endl << std::endl;
+        std::cout << "Hole: ";
+        Card::displayCard(holeA[0]);
+        std::cout << "  ";
+        Card::displayCard(holeA[1]);
+    } else {
+        std::cout << "Current Turn: B" << std::endl << std::endl;
+        std::cout << "Hole: ";
+        Card::displayCard(holeB[0]);
+        std::cout << "  ";
+        Card::displayCard(holeB[1]);
+    }
+
+    std::cout << std::endl << "Community Cards: ";
+        for (size_t i{0}; i < communityDealt; ++i) {
+            Card::displayCard(communityCards[i]);
+            std::cout << "  ";
+        }
+
+        std::cout << std::endl << "Pot: " << pot << std::endl << std::endl;
+
+        std::cout << "player A Stack: " << aStack << std::endl << "player B Stack: " << bStack << std::endl;
+}
+
 void Game::dealHand() { 
     Card::buildDeck(deck);
     Card::shuffle(deck, gen);
@@ -16,15 +59,19 @@ void Game::dealHand() {
     holeA[1] = deck[dealt++];
     holeB[0] = deck[dealt++];
     holeB[1] = deck[dealt++];
-    
-    stage = PREFLOP;
 }
 
-int Game::getAction() {
+int Game::getAction(int opposingBet, int curBet, bool invalid) {
+    if (!invalid) {
+        std::cout << "Other Player Bet: " << opposingBet << std::endl;
+        std::cout << "You are betting: " << curBet << std::endl << std::endl;
+    }
     std::cout << "1: CHECK | 2: RAISE | 3: CALL | 4: FOLD" << std::endl;
     std::cout << "What to do: ";
     int nextAction;
     std::cin >> nextAction;
+
+    // std::cout << nextAction << "!!!!";
 
     return nextAction;
 }
@@ -39,8 +86,15 @@ int Game::processAction(int action, int &aBet, int &bBet, bool &lastCheck, bool 
 
         case RAISE: {
             int raiseAmount;
+            
             std::cout << "Raise Amount: ";
             std::cin >> raiseAmount;
+
+            while ((raiseAmount > ((aTurn) ? aStack : bStack)) || raiseAmount <= 0 || raiseAmount + ((aTurn) ? aBet : bBet) < ((aTurn) ? bBet : aBet)) {
+                std::cout << "Invalid Raise Amount. Try Again" << std::endl;
+                std::cout << "Raise Amount: ";
+                std::cin >> raiseAmount;
+            }
 
             if (aTurn) aBet += raiseAmount;
             else bBet += raiseAmount;
@@ -66,22 +120,26 @@ int Game::bettingRound(int &aBet, int &bBet, bool &aTurn) {
     bool canCall = false; 
 
     while (true) {
-        int action = getAction();
+        displayState(aTurn);
+        
+        canCheck = false;
+        canCall = false;
+        int opposingBet = (aTurn) ? bBet : aBet;
+        int curBet = (aTurn) ? aBet : bBet;
+        int action = getAction(opposingBet, curBet, false);
         if (aBet == bBet) canCheck = true;
         if (aBet != bBet) canCall = true;
         
-        if ((action == CHECK && !canCheck) || (action == CALL && !canCall)) {
+        while ((action == CHECK && !canCheck) || (action == CALL && !canCall)) {
             std::cout << "invalid move" << std::endl;
-            continue;
+
+            action = getAction(opposingBet, curBet, true);
         }
 
         int result = processAction(action, aBet, bBet, lastCheck, aTurn);
 
         if (result == -1) return -1;
         if (result == 0) break;
-
-        canCheck = false;
-        canCall = false;
         aTurn ^= true;
     }
 
@@ -106,6 +164,8 @@ void Game::playHand() {
     int bBet = (dealer == 0) ? 20 : 10;
     bool aTurn = (dealer == 0) ? true : false;
     int betRound;
+
+    stage = PREFLOP;
     
     // preflop
     betRound = bettingRound(aBet, bBet, aTurn);
@@ -118,8 +178,11 @@ void Game::playHand() {
         return;
     }
 
+    stage = FLOP;
+
     // flop
     for (size_t i{0}; i < 3; ++i) communityCards[i] = deck[dealt++];
+    communityDealt = 3;
     
     bool mover = (dealer == 0) ? false : true;
     betRound = bettingRound(aBet, bBet, mover);
@@ -132,8 +195,11 @@ void Game::playHand() {
         return;
     }
 
+    stage = TURN;
+
     // turn
     communityCards[3] = deck[dealt++];
+    communityDealt = 4;
 
     mover = (dealer == 0) ? false : true;
     betRound = bettingRound(aBet, bBet, mover);
@@ -145,9 +211,12 @@ void Game::playHand() {
 
         return;
     }
+
+    stage = RIVER;
     
     // river
     communityCards[4] = deck[dealt++];
+    communityDealt = 5;
 
     mover = (dealer == 0) ? false : true;
     betRound = bettingRound(aBet, bBet, mover);
@@ -159,6 +228,10 @@ void Game::playHand() {
 
         return;
     }
+
+    stage = SHOWDOWN;
+
+    // showdown
 
     for (size_t i{0}; i < 5; ++i) { Card::addCard(communityCards[i], A); Card::addCard(communityCards[i], B); } 
     for (size_t i{0}; i < 2; ++i) { Card::addCard(holeA[i], A); Card::addCard(holeB[i], B); }
@@ -166,17 +239,30 @@ void Game::playHand() {
     uint32_t aHandVal = Card::getHandValue(A);
     uint32_t bHandVal = Card::getHandValue(B);
 
-    if (aHandVal == bHandVal) { aStack += pot/2; bStack += pot/2; }
-    else if (aHandVal > bHandVal) aStack += pot;
-    else bStack += pot;
+    if (aHandVal == bHandVal) { 
+        aStack += pot/2; 
+        bStack += pot/2; 
+
+        std::cout << "Tie" << std::endl;
+    } else if (aHandVal > bHandVal) {
+        aStack += pot;
+
+        std::cout << "A Win" << std::endl;
+    } else {
+        bStack += pot;
+
+        std::cout << "B Win" << std::endl;
+    }
 
     dealer ^= 1;
+
+
 }
 
 
 Game::Game() : 
-    A{{}}, B{{}}, aStack{1000}, bStack{1000}, stage{0}, pot{0}, 
-    dealer{0}, communityCards{-1}, holeA{-1}, holeB{-1}, dealt{0}, gen(rd())
+    A{{}}, B{{}}, aStack{1000}, bStack{1000}, stage{0}, pot{0}, communityDealt{0},
+    dealer{0}, communityCards{0}, holeA{0}, holeB{0}, dealt{0}, gen(rd())
 {
-    dealHand();
+
 }

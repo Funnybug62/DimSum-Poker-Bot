@@ -23,7 +23,7 @@ namespace Card {
     inline const int HIGHCARD = 0;
 
     void shuffle(uint8_t (&deck)[52], std::mt19937& gen);
-    void printCard(uint8_t card);
+    void displayCard(uint8_t card);
     void buildDeck(uint8_t (&deck)[52]);
     void addCard(uint8_t card, Hand& h);
     int flush(Hand h);

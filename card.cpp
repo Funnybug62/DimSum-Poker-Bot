@@ -25,11 +25,11 @@ void Card::shuffle(uint8_t (&deck)[52], std::mt19937& gen) {
     }   
 }
 
-void Card::printCard(uint8_t card) {
+void Card::displayCard(uint8_t card) {
     uint8_t suit = card >> 4;
     uint8_t rank = card & ((1 << 4)-1);
 
-    std::cout << Card::suits[suit] << Card::ranks[rank] << std::endl;
+    std::cout << Card::suits[suit] << Card::ranks[rank];
 } 
 
 int Card::flush(Hand h) {
