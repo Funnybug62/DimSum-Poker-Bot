@@ -2,6 +2,11 @@
 
 void Game::clearTerminal() { system("clear"); }
 
+int Game::getDealt() { return dealt; }
+int Game::getAStack() { return aStack; }
+int Game::getBStack() { return bStack; }
+
+
 std::string Game::getStageString() {
     switch (stage) {
         case PREFLOP: return "PREFLOP";
@@ -13,7 +18,7 @@ std::string Game::getStageString() {
     }
 }
 
-void Game::displayState(bool aTurn) {
+void Game::displayState(bool aTurn, int aBet, int bBet) {
     clearTerminal();
     clearTerminal();
 
@@ -40,7 +45,7 @@ void Game::displayState(bool aTurn) {
 
         std::cout << std::endl << "Pot: " << pot << std::endl << std::endl;
 
-        std::cout << "player A Stack: " << aStack << std::endl << "player B Stack: " << bStack << std::endl;
+        std::cout << "player A Stack: " << aStack-aBet << std::endl << "player B Stack: " << bStack-bBet << std::endl;
 }
 
 void Game::dealHand() { 
@@ -104,12 +109,15 @@ int Game::processAction(int action, int &aBet, int &bBet, bool &lastCheck, bool 
         }
 
         case RAISE: {
-            int raiseAmount;
+            int raiseAmount; 
             
-            std::cout << "Raise Amount: ";
-            std::cin >> raiseAmount;
+            if (!aTurn) raiseAmount = std::min(aBet + 100, bStack);
+            else {
+                std::cout << "Raise Amount: ";
+                std::cin >> raiseAmount;
+            }
 
-            while ((raiseAmount > ((aTurn) ? aStack : bStack)) || raiseAmount <= 0 || raiseAmount + ((aTurn) ? aBet : bBet) < ((aTurn) ? bBet : aBet)) {
+            while ((raiseAmount > ((aTurn) ? aStack : bStack)) || raiseAmount <= 0 || (raiseAmount + ((aTurn) ? aBet : bBet)) < ((aTurn) ? bBet : aBet)) {
                 std::cout << "Invalid Raise Amount. Try Again" << std::endl;
                 std::cout << "Raise Amount: ";
                 std::cin >> raiseAmount;
@@ -139,17 +147,24 @@ int Game::bettingRound(int &aBet, int &bBet, bool &aTurn) {
     bool canCall = false; 
 
     while (true) {
-        displayState(aTurn);
+        displayState(aTurn, aBet, bBet);
         
         canCheck = false;
         canCall = false;
         int opposingBet = (aTurn) ? bBet : aBet;
         int curBet = (aTurn) ? aBet : bBet;
-        int action = getAction(opposingBet, curBet, false);
+        int action;
+        if (aTurn) action = getAction(opposingBet, curBet, false);
+        else {
+            double predictedWinRate = Engine::estimateWR(holeB, communityCards, communityDealt, 1000);
+            int callAmount = std::abs(opposingBet - curBet);
+            action = Engine::makeDecision(predictedWinRate, pot, callAmount, bStack);
+        }
+
         if (aBet == bBet) canCheck = true;
         if (aBet != bBet) canCall = true;
         
-        while ((action == CHECK && !canCheck) || (action == CALL && !canCall)) {
+        while (aTurn && ((action == CHECK && !canCheck) || (action == CALL && !canCall))) {
             std::cout << "invalid move" << std::endl;
 
             action = getAction(opposingBet, curBet, true);
@@ -285,18 +300,11 @@ void Game::playHand() {
 
     dealer ^= 1;
 
-
+    std::cout << "Enter to continue..";
+    std::cin.clear();
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); 
+    std::cin.get();
 }
-
-void Game::playFull() {
-    while (aStack > 0 && bStack > 0) {
-        playHand();
-    }
-
-    if (aStack > 0) std::cout << "A Won" << std::endl;
-    else std::cout << "B Won" << std::endl;
-}
-
 
 Game::Game() : 
     A{{}}, B{{}}, aStack{1000}, bStack{1000}, stage{0}, pot{0}, communityDealt{0},

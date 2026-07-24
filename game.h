@@ -3,7 +3,9 @@
 
 #include <iostream>
 #include <random>
+#include <limits>
 #include "card.h"
+#include "engine.h"
 
 class Game {
 private:
@@ -52,8 +54,11 @@ public:
     void dealHand();
     int bettingRound(int &aBet, int &bBet, bool &aTurn);
     void playHand();
-    void displayState(bool aTurn);
-    void playFull();
+    void displayState(bool aTurn, int aBet, int bBet);
+
+    int getDealt();
+    int getAStack();
+    int getBStack();
 };
 
 #endif
