@@ -130,13 +130,14 @@ int Game::processAction(int action, int &aBet, int &bBet, bool &lastCheck, bool 
             int raiseAmount; 
             
             int baseLine = (pot == 0) ? aBet + bBet : pot;
-            if (!aTurn) lastBotRaise = raiseAmount = std::max(std::min((int)(baseLine * (0.3 + 0.7 * predictedWinRate)), bStack-bBet), 0);
+            if (!aTurn) lastBotRaise = raiseAmount = std::max(std::min(std::max((int)(baseLine * (0.3 + 0.7 * predictedWinRate)), (std::abs(aBet - bBet))), bStack-bBet), 0);
             else {
                 std::cout << "Raise Amount: ";
                 std::cin >> raiseAmount;
             }
 
             while ((raiseAmount > ((aTurn) ? aStack : bStack)) || raiseAmount <= 0 || (raiseAmount + ((aTurn) ? aBet : bBet)) < ((aTurn) ? bBet : aBet)) {
+                std::cout << "Raise Amount was: " << raiseAmount;
                 std::cout << "Invalid Raise Amount. Try Again" << std::endl;
                 std::cout << "Raise Amount: ";
                 std::cin >> raiseAmount;
@@ -172,14 +173,14 @@ int Game::bettingRound(int &aBet, int &bBet, bool &aTurn) {
     bool canCall = false; 
 
     while (true) {
-        displayState(aTurn, aBet, bBet);
+        if (aTurn) displayState(aTurn, aBet, bBet);
         
         canCheck = false;
         canCall = false;
         int opposingBet = (aTurn) ? bBet : aBet;
         int curBet = (aTurn) ? aBet : bBet;
         int action;
-        double predictedWinRate = Engine::estimateWR(holeB, communityCards, communityDealt, 100000);
+        double predictedWinRate = Engine::estimateWR(holeB, communityCards, communityDealt, 250000);
 
         if (aTurn) action = getAction(opposingBet, curBet, false);
         else {
@@ -218,88 +219,7 @@ void Game::handleBet(int &aBet, int &bBet) {
     bBet = 0;
 }
 
-void Game::playHand() {
-    dealHand();
-
-    int aBet = (dealer == 0) ? 10 : 20;
-    int bBet = (dealer == 0) ? 20 : 10;
-    bool aTurn = (dealer == 0) ? true : false;
-    int betRound;
-
-    stage = PREFLOP;
-    
-    // preflop
-    betRound = bettingRound(aBet, bBet, aTurn);
-    handleBet(aBet, bBet);
-
-    if (betRound == -1) {
-        if (aTurn) bStack += pot;
-        else aStack += pot;
-
-        return;
-    }
-
-    stage = FLOP;
-
-    // flop
-    for (size_t i{0}; i < 3; ++i) communityCards[i] = deck[dealt++];
-    communityDealt = 3;
-    
-    bool mover = (dealer == 0) ? false : true;
-    betRound = bettingRound(aBet, bBet, mover);
-    handleBet(aBet, bBet);
-
-    if (betRound == -1) {
-        if (mover) bStack += pot;
-        else aStack += pot;
-
-        return;
-    }
-
-    stage = TURN;
-
-    // turn
-    communityCards[3] = deck[dealt++];
-    communityDealt = 4;
-
-    mover = (dealer == 0) ? false : true;
-    betRound = bettingRound(aBet, bBet, mover);
-    handleBet(aBet, bBet);
-
-    if (betRound == -1) {
-        if (mover) bStack += pot;
-        else aStack += pot;
-
-        return;
-    }
-
-    stage = RIVER;
-    
-    // river
-    communityCards[4] = deck[dealt++];
-    communityDealt = 5;
-
-    mover = (dealer == 0) ? false : true;
-    betRound = bettingRound(aBet, bBet, mover);
-    handleBet(aBet, bBet);
-
-    if (betRound == -1) {
-        if (mover) bStack += pot;
-        else aStack += pot;
-
-        return;
-    }
-
-    stage = SHOWDOWN;
-
-    // showdown
-
-    for (size_t i{0}; i < 5; ++i) { Card::addCard(communityCards[i], A); Card::addCard(communityCards[i], B); } 
-    for (size_t i{0}; i < 2; ++i) { Card::addCard(holeA[i], A); Card::addCard(holeB[i], B); }
-
-    uint32_t aHandVal = Card::getHandValue(A);
-    uint32_t bHandVal = Card::getHandValue(B);
-
+void Game::endGame(uint8_t holeA[2], uint8_t holeB[2], uint32_t aHandVal, uint32_t bHandVal) {
     std::cout << "A Hand: ";
     Card::displayCard(holeA[0]);
     Card::displayCard(holeA[1]);
@@ -325,12 +245,153 @@ void Game::playHand() {
         std::cout << "B Win" << std::endl;
     }
 
-    dealer ^= 1;
-
     std::cout << "Enter to continue..";
     std::cin.clear();
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); 
     std::cin.get();
+}
+
+void Game::playHand() {
+    dealHand();
+
+    int aBet = (dealer == 0) ? 10 : 20;
+    int bBet = (dealer == 0) ? 20 : 10;
+    bool aTurn = (dealer == 0) ? true : false;
+    int betRound;
+
+    stage = PREFLOP;
+    
+    // preflop
+    betRound = bettingRound(aBet, bBet, aTurn);
+    handleBet(aBet, bBet);
+
+    if (betRound == -1) {
+        if (aTurn) bStack += pot;
+        else aStack += pot;
+
+        std::cout << "A Hand: ";
+        Card::displayCard(holeA[0]);
+        Card::displayCard(holeA[1]);
+        std::cout << std::endl;
+
+        std::cout << "B Hand: ";
+        Card::displayCard(holeB[0]);
+        Card::displayCard(holeB[1]);
+        std::cout << std::endl;
+
+        std::cout << "Enter to continue..";
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); 
+        std::cin.get();
+        return;
+    }
+
+    stage = FLOP;
+
+    // flop
+    for (size_t i{0}; i < 3; ++i) communityCards[i] = deck[dealt++];
+    communityDealt = 3;
+    
+    bool mover = (dealer == 0) ? false : true;
+    betRound = bettingRound(aBet, bBet, mover);
+    handleBet(aBet, bBet);
+
+    if (betRound == -1) {
+        if (mover) bStack += pot;
+        else aStack += pot;
+
+        std::cout << "A Hand: ";
+        Card::displayCard(holeA[0]);
+        Card::displayCard(holeA[1]);
+        std::cout << std::endl;
+
+        std::cout << "B Hand: ";
+        Card::displayCard(holeB[0]);
+        Card::displayCard(holeB[1]);
+        std::cout << std::endl;
+
+        std::cout << "Enter to continue..";
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); 
+        std::cin.get();
+        return;
+    }
+
+    stage = TURN;
+
+    // turn
+    communityCards[3] = deck[dealt++];
+    communityDealt = 4;
+
+    mover = (dealer == 0) ? false : true;
+    betRound = bettingRound(aBet, bBet, mover);
+    handleBet(aBet, bBet);
+
+    if (betRound == -1) {
+        if (mover) bStack += pot;
+        else aStack += pot;
+
+        std::cout << "A Hand: ";
+        Card::displayCard(holeA[0]);
+        Card::displayCard(holeA[1]);
+        std::cout << std::endl;
+
+        std::cout << "B Hand: ";
+        Card::displayCard(holeB[0]);
+        Card::displayCard(holeB[1]);
+        std::cout << std::endl;
+
+        std::cout << "Enter to continue..";
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); 
+        std::cin.get();
+        return;
+    }
+
+    stage = RIVER;
+    
+    // river
+    communityCards[4] = deck[dealt++];
+    communityDealt = 5;
+
+    mover = (dealer == 0) ? false : true;
+    betRound = bettingRound(aBet, bBet, mover);
+    handleBet(aBet, bBet);
+
+    if (betRound == -1) {
+        if (mover) bStack += pot;
+        else aStack += pot;
+
+        std::cout << "A Hand: ";
+        Card::displayCard(holeA[0]);
+        Card::displayCard(holeA[1]);
+        std::cout << std::endl;
+
+        std::cout << "B Hand: ";
+        Card::displayCard(holeB[0]);
+        Card::displayCard(holeB[1]);
+        std::cout << std::endl;
+
+        std::cout << "Enter to continue..";
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); 
+        std::cin.get();
+        return;
+    }
+
+    stage = SHOWDOWN;
+
+    // showdown
+
+    for (size_t i{0}; i < 5; ++i) { Card::addCard(communityCards[i], A); Card::addCard(communityCards[i], B); } 
+    for (size_t i{0}; i < 2; ++i) { Card::addCard(holeA[i], A); Card::addCard(holeB[i], B); }
+
+    uint32_t aHandVal = Card::getHandValue(A);
+    uint32_t bHandVal = Card::getHandValue(B);
+
+    endGame(holeA, holeB, aHandVal, bHandVal);
+
+    dealer ^= 1;
 }
 
 Game::Game() : 

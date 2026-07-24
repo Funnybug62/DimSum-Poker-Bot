@@ -49,6 +49,7 @@ private:
     void clearTerminal();
     std::string getStageString();
     void printLastBotMove(int lastBotMove, int raiseAmount);
+    void endGame(uint8_t holeA[2], uint8_t holeB[2], uint32_t aHandVal, uint32_t bHandVal);
 public:
     const int smallBlind = 10;
     const int bigBlind = 20;
