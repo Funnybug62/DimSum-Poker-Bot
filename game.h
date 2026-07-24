@@ -39,13 +39,16 @@ private:
     uint8_t holeB[2];   
 
     int dealt;
+    int lastBotMove;
+    int lastBotRaise;
     uint8_t deck[52];
 
     int getAction(int opposingBet, int curBet, bool invalid);
-    int processAction(int action, int &aBet, int &bBet, bool &lastCheck, bool aTurn);
+    int processAction(int action, int &aBet, int &bBet, bool &lastCheck, bool aTurn, double predictedWinRate);
     void handleBet(int &aBet, int &bBet);
     void clearTerminal();
     std::string getStageString();
+    void printLastBotMove(int lastBotMove, int raiseAmount);
 public:
     const int smallBlind = 10;
     const int bigBlind = 20;

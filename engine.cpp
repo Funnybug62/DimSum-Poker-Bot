@@ -65,7 +65,11 @@ double Engine::estimateWR(uint8_t holeCards[2], uint8_t communityCards[5], int d
 int Engine::makeDecision(double winRate, int pot, int callAmount, int stack) {
     double potOdds = (double) callAmount / (pot + callAmount);
 
-    if (winRate > 0.65) return RAISE;
+    int bluffNum = (std::rand() % (10)) + 1;
+
+    if (stack > 0 && winRate > 0.65) return RAISE;
+    if (bluffNum == 1) return RAISE;
+
     if (callAmount == 0) return CHECK;
     if (winRate < potOdds) return FOLD;
 

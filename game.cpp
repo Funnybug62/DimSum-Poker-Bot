@@ -18,12 +18,38 @@ std::string Game::getStageString() {
     }
 }
 
+void Game::printLastBotMove(int lastBotMove, int raiseAmount) {
+    switch (lastBotMove) {
+        case CHECK: {
+            std::cout << "Bot: Checked" << std::endl;
+            return;
+        }
+
+        case RAISE: {
+            std::cout << "Bot: Raised " << raiseAmount << std::endl; 
+            return;
+        }
+
+        case CALL: {
+            std::cout << "Bot: Called" << std::endl;
+            return;
+        }
+
+        case FOLD: {
+            std::cout << "Bot: Folded" << std::endl;
+            return;
+        }
+    }
+}
+
 void Game::displayState(bool aTurn, int aBet, int bBet) {
     clearTerminal();
     clearTerminal();
 
     std::cout << "STAGE: " << getStageString() << std::endl;
     if (aTurn) {
+        if (lastBotMove != -1) printLastBotMove(lastBotMove, lastBotRaise);
+        
         std::cout << "Current Turn: A" << std::endl << std::endl;
         std::cout << "Hole: ";
         Card::displayCard(holeA[0]);
@@ -56,9 +82,9 @@ void Game::dealHand() {
     B = Hand{};
     
     dealt = 0;
+    communityDealt = 0;
+    for (size_t i{0}; i < 5; ++i) communityCards[i] = 0;
     pot = 0;
-    aStack -= (dealer == 0) ? smallBlind : bigBlind;
-    bStack -= (dealer == 1) ? smallBlind : bigBlind;
 
     holeA[0] = deck[dealt++];
     holeA[1] = deck[dealt++];
@@ -95,23 +121,16 @@ int Game::getAction(int opposingBet, int curBet, bool invalid) {
     int nextAction;
     std::cin >> nextAction;
 
-    // std::cout << nextAction << "!!!!";
-
     return nextAction;
 }
 
-int Game::processAction(int action, int &aBet, int &bBet, bool &lastCheck, bool aTurn) {
+int Game::processAction(int action, int &aBet, int &bBet, bool &lastCheck, bool aTurn, double predictedWinRate) {
     switch (action) {
-        case CHECK: {
-            if (lastCheck) return 0;
-            lastCheck = true;
-            return 1;
-        }
-
         case RAISE: {
             int raiseAmount; 
             
-            if (!aTurn) raiseAmount = std::min(aBet + 100, bStack);
+            int baseLine = (pot == 0) ? aBet + bBet : pot;
+            if (!aTurn) lastBotRaise = raiseAmount = std::max(std::min((int)(baseLine * (0.3 + 0.7 * predictedWinRate)), bStack-bBet), 0);
             else {
                 std::cout << "Raise Amount: ";
                 std::cin >> raiseAmount;
@@ -129,9 +148,15 @@ int Game::processAction(int action, int &aBet, int &bBet, bool &lastCheck, bool 
             return 1;
         }
 
+        case CHECK: {
+            if (lastCheck) return 0;
+            lastCheck = true;
+            return 1;
+        }
+
         case CALL: {
-            if (aTurn) aBet = bBet;
-            else bBet = aBet;
+            if (aTurn) aBet = std::min(bBet, aStack);
+            else bBet = std::min(aBet, bStack);
             return 0;
         }
 
@@ -154,11 +179,13 @@ int Game::bettingRound(int &aBet, int &bBet, bool &aTurn) {
         int opposingBet = (aTurn) ? bBet : aBet;
         int curBet = (aTurn) ? aBet : bBet;
         int action;
+        double predictedWinRate = Engine::estimateWR(holeB, communityCards, communityDealt, 100000);
+
         if (aTurn) action = getAction(opposingBet, curBet, false);
         else {
-            double predictedWinRate = Engine::estimateWR(holeB, communityCards, communityDealt, 1000);
             int callAmount = std::abs(opposingBet - curBet);
-            action = Engine::makeDecision(predictedWinRate, pot, callAmount, bStack);
+            action = Engine::makeDecision(predictedWinRate, pot, callAmount, bStack-bBet);
+            lastBotMove = action;
         }
 
         if (aBet == bBet) canCheck = true;
@@ -170,7 +197,7 @@ int Game::bettingRound(int &aBet, int &bBet, bool &aTurn) {
             action = getAction(opposingBet, curBet, true);
         }
 
-        int result = processAction(action, aBet, bBet, lastCheck, aTurn);
+        int result = processAction(action, aBet, bBet, lastCheck, aTurn, predictedWinRate);
 
         if (result == -1) return -1;
         if (result == 0) break;
@@ -307,7 +334,7 @@ void Game::playHand() {
 }
 
 Game::Game() : 
-    A{{}}, B{{}}, aStack{1000}, bStack{1000}, stage{0}, pot{0}, communityDealt{0},
+    A{{}}, B{{}}, aStack{1000}, bStack{1000}, stage{0}, pot{0}, communityDealt{0}, lastBotMove{-1},
     dealer{0}, communityCards{0}, holeA{0}, holeB{0}, dealt{0}, gen(rd())
 {
 
