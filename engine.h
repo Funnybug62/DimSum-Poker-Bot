@@ -20,12 +20,15 @@ private:
     // std::random_device rd;
     // std::mt19937 gen;
 
-    static void shuffle(std::vector<uint8_t> deck, std::mt19937);
-    static bool containsCard(uint8_t card, uint8_t holeCards[2], uint8_t communityCards[5]);
+    inline static int actionFreq[5][4] = {};
+
+    static void shuffle(std::vector<uint8_t> &deck, std::mt19937 &gen);
+    static bool isUnknown(uint8_t card, uint8_t holeCards[2], uint8_t communityCards[5]);
     static void buildUnknowns(std::vector<uint8_t> (&unknowns), uint8_t holeCards[2], uint8_t communityCards[5]);
 public:
     Engine();
 
+    static void recordAction(int action, int stage);
     static int makeDecision(double winRate, int pot, int callAmount, int stack);
     static double estimateWR(uint8_t holeCards[2], uint8_t communityCards[5], int dealt, int numSims); 
 };  

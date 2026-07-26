@@ -109,6 +109,11 @@ void Game::dealHand() {
         holeB[0] = holeB[1];
         holeB[1] = temp;
     }
+
+    lastBotMove = -1;
+    lastBotRaise = 0;
+
+    stage = PREFLOP;
 }
 
 int Game::getAction(int opposingBet, int curBet, bool invalid) {
@@ -129,15 +134,21 @@ int Game::processAction(int action, int &aBet, int &bBet, bool &lastCheck, bool 
         case RAISE: {
             int raiseAmount; 
             
+            // problem with how the bot is raising FIX ASAP
             int baseLine = (pot == 0) ? aBet + bBet : pot;
-            if (!aTurn) lastBotRaise = raiseAmount = std::max(std::min(std::max((int)(baseLine * (0.3 + 0.7 * predictedWinRate)), (std::abs(aBet - bBet))), bStack-bBet), 0);
-            else {
+            if (!aTurn) {
+                int minRaise = std::abs(aBet - bBet) + 1;
+                int desired = (int)(baseLine * (0.3 + 0.7 * predictedWinRate));
+                int maxRaise;
+                if (stage == PREFLOP) maxRaise = std::min(bStack - bBet, 3*bigBlind);
+                else maxRaise = std::min(bStack - bBet, pot + aBet + bBet);
+                lastBotRaise = raiseAmount = std::max(std::min(std::max(desired, minRaise), maxRaise), 0);
+            } else {
                 std::cout << "Raise Amount: ";
                 std::cin >> raiseAmount;
             }
 
             while ((raiseAmount > ((aTurn) ? aStack : bStack)) || raiseAmount <= 0 || (raiseAmount + ((aTurn) ? aBet : bBet)) < ((aTurn) ? bBet : aBet)) {
-                std::cout << "Raise Amount was: " << raiseAmount;
                 std::cout << "Invalid Raise Amount. Try Again" << std::endl;
                 std::cout << "Raise Amount: ";
                 std::cin >> raiseAmount;
@@ -180,14 +191,18 @@ int Game::bettingRound(int &aBet, int &bBet, bool &aTurn) {
         int opposingBet = (aTurn) ? bBet : aBet;
         int curBet = (aTurn) ? aBet : bBet;
         int action;
-        double predictedWinRate = Engine::estimateWR(holeB, communityCards, communityDealt, 250000);
+        double predictedWinRate;
 
         if (aTurn) action = getAction(opposingBet, curBet, false);
         else {
+            predictedWinRate = Engine::estimateWR(holeB, communityCards, communityDealt, 250000);
             int callAmount = std::abs(opposingBet - curBet);
-            action = Engine::makeDecision(predictedWinRate, pot, callAmount, bStack-bBet);
-            lastBotMove = action;
+            lastBotMove = action = Engine::makeDecision(predictedWinRate, pot+aBet+bBet, callAmount, bStack-bBet);
+
+            if (action == FOLD) std::cerr << "PREDICTED: " << predictedWinRate << ". POT: " << pot + aBet+bBet;
         }
+
+        // std::cout << "ACTION CHOSEN: " << action << ". ATURN: " << aTurn;
 
         if (aBet == bBet) canCheck = true;
         if (aBet != bBet) canCall = true;
@@ -197,6 +212,8 @@ int Game::bettingRound(int &aBet, int &bBet, bool &aTurn) {
 
             action = getAction(opposingBet, curBet, true);
         }
+
+        if (aTurn) Engine::recordAction(action, stage);
 
         int result = processAction(action, aBet, bBet, lastCheck, aTurn, predictedWinRate);
 
@@ -251,6 +268,30 @@ void Game::endGame(uint8_t holeA[2], uint8_t holeB[2], uint32_t aHandVal, uint32
     std::cin.get();
 }
 
+void foldHand(bool aTurn, int &aStack, int &bStack, int pot, int &dealer, uint8_t holeA[2], uint8_t holeB[2]) {
+    if (aTurn) std::cout << "A FOLD" << std::endl;
+    else std::cout << "B FOLD" << std::endl;
+    
+    if (aTurn) bStack += pot;
+    else aStack += pot;
+
+    std::cout << "A Hand: ";
+    Card::displayCard(holeA[0]);
+    Card::displayCard(holeA[1]);
+    std::cout << std::endl;
+
+    std::cout << "B Hand: ";
+    Card::displayCard(holeB[0]);
+    Card::displayCard(holeB[1]);
+    std::cout << std::endl;
+
+    std::cout << "Enter to continue..";
+    std::cin.clear();
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); 
+    std::cin.get();
+    dealer ^= 1;
+}
+
 void Game::playHand() {
     dealHand();
 
@@ -266,23 +307,7 @@ void Game::playHand() {
     handleBet(aBet, bBet);
 
     if (betRound == -1) {
-        if (aTurn) bStack += pot;
-        else aStack += pot;
-
-        std::cout << "A Hand: ";
-        Card::displayCard(holeA[0]);
-        Card::displayCard(holeA[1]);
-        std::cout << std::endl;
-
-        std::cout << "B Hand: ";
-        Card::displayCard(holeB[0]);
-        Card::displayCard(holeB[1]);
-        std::cout << std::endl;
-
-        std::cout << "Enter to continue..";
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); 
-        std::cin.get();
+        foldHand(aTurn, aStack, bStack, pot, dealer, holeA, holeB);
         return;
     }
 
@@ -297,23 +322,7 @@ void Game::playHand() {
     handleBet(aBet, bBet);
 
     if (betRound == -1) {
-        if (mover) bStack += pot;
-        else aStack += pot;
-
-        std::cout << "A Hand: ";
-        Card::displayCard(holeA[0]);
-        Card::displayCard(holeA[1]);
-        std::cout << std::endl;
-
-        std::cout << "B Hand: ";
-        Card::displayCard(holeB[0]);
-        Card::displayCard(holeB[1]);
-        std::cout << std::endl;
-
-        std::cout << "Enter to continue..";
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); 
-        std::cin.get();
+        foldHand(mover, aStack, bStack, pot, dealer, holeA, holeB);
         return;
     }
 
@@ -328,23 +337,7 @@ void Game::playHand() {
     handleBet(aBet, bBet);
 
     if (betRound == -1) {
-        if (mover) bStack += pot;
-        else aStack += pot;
-
-        std::cout << "A Hand: ";
-        Card::displayCard(holeA[0]);
-        Card::displayCard(holeA[1]);
-        std::cout << std::endl;
-
-        std::cout << "B Hand: ";
-        Card::displayCard(holeB[0]);
-        Card::displayCard(holeB[1]);
-        std::cout << std::endl;
-
-        std::cout << "Enter to continue..";
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); 
-        std::cin.get();
+        foldHand(mover, aStack, bStack, pot, dealer, holeA, holeB);
         return;
     }
 
@@ -359,23 +352,7 @@ void Game::playHand() {
     handleBet(aBet, bBet);
 
     if (betRound == -1) {
-        if (mover) bStack += pot;
-        else aStack += pot;
-
-        std::cout << "A Hand: ";
-        Card::displayCard(holeA[0]);
-        Card::displayCard(holeA[1]);
-        std::cout << std::endl;
-
-        std::cout << "B Hand: ";
-        Card::displayCard(holeB[0]);
-        Card::displayCard(holeB[1]);
-        std::cout << std::endl;
-
-        std::cout << "Enter to continue..";
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); 
-        std::cin.get();
+        foldHand(mover, aStack, bStack, pot, dealer, holeA, holeB);
         return;
     }
 
