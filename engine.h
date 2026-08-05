@@ -29,7 +29,7 @@ public:
     Engine();
 
     static void recordAction(int action, int stage);
-    static int makeDecision(double winRate, int pot, int callAmount, int stack);
+    static int makeDecision(double winRate, int pot, int callAmount, int stack, int currentStage);
     static double estimateWR(uint8_t holeCards[2], uint8_t communityCards[5], int dealt, int numSims); 
 };  
 

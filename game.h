@@ -63,6 +63,7 @@ public:
     int getDealt();
     int getAStack();
     int getBStack();
+    int getStage();
 };
 
 #endif

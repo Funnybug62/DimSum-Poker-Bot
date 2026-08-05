@@ -5,6 +5,7 @@ void Game::clearTerminal() { system("clear"); }
 int Game::getDealt() { return dealt; }
 int Game::getAStack() { return aStack; }
 int Game::getBStack() { return bStack; }
+int Game::getStage() { return stage; }
 
 
 std::string Game::getStageString() {
@@ -197,9 +198,9 @@ int Game::bettingRound(int &aBet, int &bBet, bool &aTurn) {
         else {
             predictedWinRate = Engine::estimateWR(holeB, communityCards, communityDealt, 250000);
             int callAmount = std::abs(opposingBet - curBet);
-            lastBotMove = action = Engine::makeDecision(predictedWinRate, pot+aBet+bBet, callAmount, bStack-bBet);
+            lastBotMove = action = Engine::makeDecision(predictedWinRate, pot+aBet+bBet, callAmount, bStack-bBet, stage);
 
-            if (action == FOLD) std::cerr << "PREDICTED: " << predictedWinRate << ". POT: " << pot + aBet+bBet;
+            // if (action == FOLD) std::cerr << "PREDICTED: " << predictedWinRate << ". POT: " << pot + aBet+bBet;
         }
 
         // std::cout << "ACTION CHOSEN: " << action << ". ATURN: " << aTurn;

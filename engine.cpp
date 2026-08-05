@@ -64,16 +64,34 @@ double Engine::estimateWR(uint8_t holeCards[2], uint8_t communityCards[5], int d
     return (double) wins/numSims;
 }
 
-int Engine::makeDecision(double winRate, int pot, int callAmount, int stack) {
+int Engine::makeDecision(double winRate, int pot, int callAmount, int stack, int currentStage) {
     double potOdds = (double) callAmount / (pot + callAmount);
 
-    int bluffNum = (std::rand() % (10)) + 1;
+    int bluffNum = (std::rand() % (20)) + 1;
+    double callThreshold = 0.65;
+
+    int bluffThreshold = 3;
+    double raiseThreshold = 0.45 + currentStage*0.1;
+
+    int totalActions = 0;
+    for (size_t i{0}; i < 4; ++i) totalActions += actionFreq[currentStage][i];
+
+    if (totalActions != 0) {
+        double raiseFreq = (double) actionFreq[currentStage][RAISE] / totalActions;
+        double foldFreq = (double) actionFreq[currentStage][FOLD] / totalActions;
+
+        if (raiseFreq > 0.4) callThreshold -= 0.15;
+        if (raiseFreq < 0.15) callThreshold += 0.15;
+
+        if (foldFreq > 0.4) bluffThreshold = 4;
+        if (foldFreq < 0.15) bluffThreshold = 2;
+    }
 
     if (stack > 0 && winRate > 0.85) return RAISE;
-    if (stack > 0 && bluffNum == 1) return RAISE;
+    if (stack > 0 && winRate < potOdds-0.10 && bluffNum <= bluffThreshold) return RAISE;
 
     if (callAmount == 0) return CHECK;
-    if (stack >= callAmount && winRate > 0.65) return CALL;
+    if (stack >= callAmount && winRate > callThreshold) return CALL;
     if (winRate < potOdds) return FOLD;
 
     return CALL;
